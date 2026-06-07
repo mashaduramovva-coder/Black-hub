@@ -1,6 +1,6 @@
 -- =============================================
--- Alpha Script V1
---   By Creator @razd0rr
+--    ESP + AIM  |  v4 (with distance priority)
+-- + World Settings + Rainbow Crosshair
 -- =============================================
 
 local Players    = game:GetService("Players")
