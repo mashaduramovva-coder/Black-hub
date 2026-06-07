@@ -1,6 +1,6 @@
 -- =============================================
---    ESP + AIM  |  v4 (with distance priority)
--- + World Settings + Rainbow Crosshair
+--   ESP + AIM  |  v4 (with distance priority)
+--   + World Settings + Rainbow Crosshair
 -- =============================================
 
 local Players    = game:GetService("Players")
