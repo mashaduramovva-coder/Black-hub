@@ -1,0 +1,451 @@
+-- =============================================
+-- Alpha Script V1
+--   By Creator @razd0rr
+-- =============================================
+
+local Players    = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local TweenSvc   = game:GetService("TweenService")
+local UIS        = game:GetService("UserInputService")
+local Lighting   = game:GetService("Lighting")
+local Camera     = workspace.CurrentCamera
+local LP         = Players.LocalPlayer
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+LP.Character = LP.Character or LP.CharacterAdded:Wait()
+
+-- =====================
+--   ESP SETTINGS
+-- =====================
+local ESP = {
+    enabled   = true,
+    highlight = true,
+    box       = true,
+    name      = true,
+    distance  = true,
+    rate      = 0.05,
+    distColor = 20,
+}
+
+-- =====================
+--   AIM SETTINGS
+-- =====================
+local AIM = {
+    enabled        = false,
+    target         = "Head",
+    fovRadius      = 150,
+    showFov        = true,
+    smoothness     = 0.15,
+    releaseZone    = 1.5,
+    teamCheck      = true,
+    visCheck       = false,
+    distanceWeight = 0.6,
+}
+
+-- =====================
+--   WORLD SETTINGS
+-- =====================
+local WORLD = {
+    fullbright    = false,
+    customWorld   = false,
+    crosshair     = false,
+}
+
+-- Save original lighting settings
+local originalLighting = {
+    Brightness = Lighting.Brightness,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    ColorShift_Top = Lighting.ColorShift_Top,
+    ColorShift_Bottom = Lighting.ColorShift_Bottom,
+    FogColor = Lighting.FogColor,
+    FogEnd = Lighting.FogEnd,
+}
+
+-- Crosshair variables
+local crosshairObj = nil
+local crosshairAngle = 0
+
+-- =====================
+--   GUI
+-- =====================
+local oldGui = LP.PlayerGui:FindFirstChild("ESPMenu")
+if oldGui then oldGui:Destroy() end
+
+local SG = Instance.new("ScreenGui")
+SG.Name = "ESPMenu"; SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.IgnoreGuiInset = true; SG.Parent = LP.PlayerGui
+
+pcall(function()
+    if syn and syn.protect_gui then syn.protect_gui(SG)
+    elseif protect_gui then protect_gui(SG) end
+end)
+
+local MF = Instance.new("Frame", SG)
+MF.Name = "MenuFrame"; MF.Size = UDim2.new(0,280,0,520)
+MF.Position = UDim2.new(0,20,0.5,-260)
+MF.BackgroundColor3 = Color3.fromRGB(18,18,28)
+MF.BorderSizePixel = 0; MF.Active = true; MF.Draggable = true
+Instance.new("UICorner", MF).CornerRadius = UDim.new(0,8)
+local msk = Instance.new("UIStroke", MF)
+msk.Color = Color3.fromRGB(70,70,200); msk.Thickness = 1.5
+
+-- Header
+local TB = Instance.new("Frame", MF)
+TB.Size = UDim2.new(1,0,0,34); TB.BackgroundColor3 = Color3.fromRGB(25,25,75)
+TB.BorderSizePixel = 0
+Instance.new("UICorner", TB).CornerRadius = UDim.new(0,8)
+
+local TL = Instance.new("TextLabel", TB)
+TL.Size = UDim2.new(1,-40,1,0); TL.Position = UDim2.new(0,10,0,0)
+TL.BackgroundTransparency = 1; TL.Text = "Alpha Aim Bot"
+TL.TextColor3 = Color3.fromRGB(255,255,255); TL.TextSize = 14
+TL.Font = Enum.Font.GothamBold; TL.TextXAlignment = Enum.TextXAlignment.Left
+
+local CB = Instance.new("TextButton", TB)
+CB.Size = UDim2.new(0,26,0,26); CB.Position = UDim2.new(1,-30,0,4)
+CB.BackgroundColor3 = Color3.fromRGB(180,40,40); CB.Text = "вњ•"
+CB.TextColor3 = Color3.fromRGB(255,255,255); CB.TextSize = 13
+CB.Font = Enum.Font.GothamBold; CB.BorderSizePixel = 0
+Instance.new("UICorner", CB).CornerRadius = UDim.new(0,6)
+
+-- Tabs
+local TF = Instance.new("Frame", MF)
+TF.Size = UDim2.new(1,0,0,30); TF.Position = UDim2.new(0,0,0,34)
+TF.BackgroundColor3 = Color3.fromRGB(25,25,45); TF.BorderSizePixel = 0
+local TLL = Instance.new("UIListLayout", TF)
+TLL.FillDirection = Enum.FillDirection.Horizontal; TLL.Padding = UDim.new(0,2)
+TLL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TLL.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local function mkTab(txt)
+    local b = Instance.new("TextButton", TF)
+    b.Size = UDim2.new(0,90,0,26); b.BackgroundColor3 = Color3.fromRGB(35,35,55)
+    b.Text = txt; b.TextColor3 = Color3.fromRGB(200,200,200)
+    b.TextSize = 12; b.Font = Enum.Font.GothamBold; b.BorderSizePixel = 0
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
+    return b
+end
+local EspTab = mkTab("ESP")
+local AimTab = mkTab("AIM")
+local WorldTab = mkTab("WORLD")
+
+local function mkScroll(parent)
+    local s = Instance.new("ScrollingFrame", parent)
+    s.Size = UDim2.new(1,-20,1,-94); s.Position = UDim2.new(0,10,0,74)
+    s.BackgroundTransparency = 1; s.BorderSizePixel = 0
+    s.ScrollBarThickness = 4; s.CanvasSize = UDim2.new(0,0,0,500)
+    local l = Instance.new("UIListLayout", s)
+    l.Padding = UDim.new(0,5); l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    return s
+end
+local EspScroll = mkScroll(MF)
+local AimScroll = mkScroll(MF)
+local WorldScroll = mkScroll(MF)
+AimScroll.Visible = false
+WorldScroll.Visible = false
+
+local Mini = Instance.new("TextButton", SG)
+Mini.Size = UDim2.new(0,44,0,44); Mini.Position = UDim2.new(0,20,0.5,-22)
+Mini.BackgroundColor3 = Color3.fromRGB(25,25,75); Mini.Text = "MENU"
+Mini.TextColor3 = Color3.fromRGB(255,255,255); Mini.TextSize = 11
+Mini.Font = Enum.Font.GothamBold; Mini.BorderSizePixel = 0; Mini.Visible = false
+Instance.new("UICorner", Mini).CornerRadius = UDim.new(0,22)
+local ms2 = Instance.new("UIStroke", Mini); ms2.Color = Color3.fromRGB(70,70,200); ms2.Thickness = 1.5
+
+local function setTab(tab)
+    EspScroll.Visible = (tab == "ESP")
+    AimScroll.Visible = (tab == "AIM")
+    WorldScroll.Visible = (tab == "WORLD")
+    
+    EspTab.BackgroundColor3 = (tab == "ESP") and Color3.fromRGB(45,45,75) or Color3.fromRGB(35,35,55)
+    EspTab.TextColor3 = (tab == "ESP") and Color3.fromRGB(255,255,255) or Color3.fromRGB(200,200,200)
+    AimTab.BackgroundColor3 = (tab == "AIM") and Color3.fromRGB(45,45,75) or Color3.fromRGB(35,35,55)
+    AimTab.TextColor3 = (tab == "AIM") and Color3.fromRGB(255,255,255) or Color3.fromRGB(200,200,200)
+    WorldTab.BackgroundColor3 = (tab == "WORLD") and Color3.fromRGB(45,45,75) or Color3.fromRGB(35,35,55)
+    WorldTab.TextColor3 = (tab == "WORLD") and Color3.fromRGB(255,255,255) or Color3.fromRGB(200,200,200)
+    
+    if tab == "WORLD" then
+        MF.Size = UDim2.new(0,280,0,400)
+    else
+        MF.Size = UDim2.new(0,280,0,520)
+    end
+end
+setTab("ESP")
+EspTab.MouseButton1Click:Connect(function() setTab("ESP") end)
+AimTab.MouseButton1Click:Connect(function() setTab("AIM") end)
+WorldTab.MouseButton1Click:Connect(function() setTab("WORLD") end)
+CB.MouseButton1Click:Connect(function() MF.Visible=false; Mini.Visible=true end)
+Mini.MouseButton1Click:Connect(function() MF.Visible=true; Mini.Visible=false end)
+UIS.InputBegan:Connect(function(inp, gpe)
+    if gpe then return end
+    if inp.KeyCode == Enum.KeyCode.RightShift then
+        MF.Visible = not MF.Visible; Mini.Visible = not MF.Visible
+    end
+end)
+
+-- =====================
+--   UI HELPERS
+-- =====================
+local function mkToggle(parent, label, get, set)
+    local f = Instance.new("Frame", parent)
+    f.Size = UDim2.new(1,-10,0,32); f.BackgroundColor3 = Color3.fromRGB(28,28,45)
+    f.BorderSizePixel = 0
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,6)
+    local lbl = Instance.new("TextLabel", f)
+    lbl.Size = UDim2.new(1,-48,1,0); lbl.Position = UDim2.new(0,10,0,0)
+    lbl.BackgroundTransparency = 1; lbl.Text = label
+    lbl.TextColor3 = Color3.fromRGB(190,190,215); lbl.TextSize = 12
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Left
+    local btn = Instance.new("TextButton", f)
+    btn.Size = UDim2.new(0,36,0,18); btn.Position = UDim2.new(1,-44,0.5,-9)
+    btn.BackgroundColor3 = get() and Color3.fromRGB(50,170,50) or Color3.fromRGB(140,40,40)
+    btn.Text = get() and "ON" or "OFF"; btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.TextSize = 10; btn.Font = Enum.Font.GothamBold; btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,9)
+    btn.MouseButton1Click:Connect(function()
+        set(not get())
+        btn.Text = get() and "ON" or "OFF"
+        TweenSvc:Create(btn, TweenInfo.new(0.12), {
+            BackgroundColor3 = get() and Color3.fromRGB(50,170,50) or Color3.fromRGB(140,40,40)
+        }):Play()
+        -- Apply world settings when toggled
+        if label == "FullBright" or label == "Custom World" then
+            applyWorldSettings()
+        end
+    end)
+end
+
+local function mkSlider(parent, label, get, set, mn, mx, isInt)
+    local f = Instance.new("Frame", parent)
+    f.Size = UDim2.new(1,-10,0,45); f.BackgroundColor3 = Color3.fromRGB(28,28,45)
+    f.BorderSizePixel = 0
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,6)
+    local lbl = Instance.new("TextLabel", f)
+    lbl.Size = UDim2.new(1,-50,0,18); lbl.Position = UDim2.new(0,8,0,2)
+    lbl.BackgroundTransparency = 1; lbl.Text = label
+    lbl.TextColor3 = Color3.fromRGB(190,190,215); lbl.TextSize = 12
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Left
+    local valLbl = Instance.new("TextLabel", f)
+    valLbl.Size = UDim2.new(0,40,0,18); valLbl.Position = UDim2.new(1,-45,0,2)
+    valLbl.BackgroundTransparency = 1; valLbl.Text = tostring(get())
+    valLbl.TextColor3 = Color3.fromRGB(100,200,255); valLbl.TextSize = 12
+    valLbl.Font = Enum.Font.GothamBold; valLbl.TextXAlignment = Enum.TextXAlignment.Right
+    local bg = Instance.new("Frame", f)
+    bg.Size = UDim2.new(1,-16,0,6); bg.Position = UDim2.new(0,8,0,30)
+    bg.BackgroundColor3 = Color3.fromRGB(45,45,65); bg.BorderSizePixel = 0
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1,0)
+    local pct = math.clamp((get()-mn)/(mx-mn),0,1)
+    local fill = Instance.new("Frame", bg)
+    fill.Size = UDim2.new(pct,0,1,0); fill.BackgroundColor3 = Color3.fromRGB(70,70,200)
+    fill.BorderSizePixel = 0; Instance.new("UICorner",fill).CornerRadius = UDim.new(1,0)
+    local knob = Instance.new("TextButton", bg)
+    knob.Size = UDim2.new(0,14,0,14); knob.Position = UDim2.new(pct,-7,0.5,-7)
+    knob.BackgroundColor3 = Color3.fromRGB(110,110,255); knob.Text = ""
+    knob.BorderSizePixel = 0; knob.ZIndex = 5
+    Instance.new("UICorner",knob).CornerRadius = UDim.new(1,0)
+    local drag = false
+    knob.MouseButton1Down:Connect(function() drag = true end)
+    UIS.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+    end)
+    UIS.InputChanged:Connect(function(i)
+        if not drag or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+        local p = math.clamp((UIS:GetMouseLocation().X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+        local v = mn + (mx-mn)*p
+        v = isInt and math.round(v) or (math.floor(v*100)/100)
+        set(v); valLbl.Text = tostring(v)
+        fill.Size = UDim2.new(p,0,1,0); knob.Position = UDim2.new(p,-7,0.5,-7)
+    end)
+end
+
+local function mkDropdown(parent, label, get, set, opts)
+    local f = Instance.new("Frame", parent)
+    f.Size = UDim2.new(1,-10,0,48); f.BackgroundColor3 = Color3.fromRGB(28,28,45)
+    f.BorderSizePixel = 0
+    Instance.new("UICorner",f).CornerRadius = UDim.new(0,6)
+    local lbl = Instance.new("TextLabel",f)
+    lbl.Size = UDim2.new(1,-10,0,18); lbl.Position = UDim2.new(0,8,0,2)
+    lbl.BackgroundTransparency = 1; lbl.Text = label
+    lbl.TextColor3 = Color3.fromRGB(190,190,215); lbl.TextSize = 12
+    lbl.Font = Enum.Font.Gotham; lbl.TextXAlignment = Enum.TextXAlignment.Left
+    local dbtn = Instance.new("TextButton",f)
+    dbtn.Size = UDim2.new(1,-16,0,22); dbtn.Position = UDim2.new(0,8,0,22)
+    dbtn.BackgroundColor3 = Color3.fromRGB(45,45,65); dbtn.Text = get()
+    dbtn.TextColor3 = Color3.fromRGB(255,255,255); dbtn.TextSize = 11
+    dbtn.Font = Enum.Font.Gotham; dbtn.BorderSizePixel = 0
+    Instance.new("UICorner",dbtn).CornerRadius = UDim.new(0,4)
+    local menu = Instance.new("Frame",SG)
+    menu.Size = UDim2.new(0,200,0,#opts*26); menu.BackgroundColor3 = Color3.fromRGB(35,35,55)
+    menu.BorderSizePixel = 0; menu.Visible = false; menu.ZIndex = 20
+    Instance.new("UICorner",menu).CornerRadius = UDim.new(0,6)
+    local sk = Instance.new("UIStroke",menu); sk.Color = Color3.fromRGB(70,70,200); sk.Thickness = 1
+    local ml = Instance.new("UIListLayout",menu); ml.Padding = UDim.new(0,2)
+    for _,opt in ipairs(opts) do
+        local ob = Instance.new("TextButton",menu)
+        ob.Size = UDim2.new(1,0,0,24); ob.BackgroundColor3 = Color3.fromRGB(45,45,75)
+        ob.Text = opt; ob.TextColor3 = Color3.fromRGB(200,200,200); ob.TextSize = 11
+        ob.Font = Enum.Font.Gotham; ob.BorderSizePixel = 0; ob.ZIndex = 21
+        ob.MouseButton1Click:Connect(function() set(opt); dbtn.Text = opt; menu.Visible = false end)
+    end
+    dbtn.MouseButton1Click:Connect(function()
+        menu.Visible = not menu.Visible
+        if menu.Visible then
+            local ap = dbtn.AbsolutePosition
+            menu.Position = UDim2.new(0, ap.X, 0, ap.Y + dbtn.AbsoluteSize.Y + 2)
+            menu.Size = UDim2.new(0, dbtn.AbsoluteSize.X, 0, #opts*26)
+        end
+    end)
+    UIS.InputBegan:Connect(function(i)
+        if i.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        task.wait()
+        if not menu.Visible then return end
+        local mp = UIS:GetMouseLocation(); local ap = menu.AbsolutePosition; local as = menu.AbsoluteSize
+        if mp.X<ap.X or mp.X>ap.X+as.X or mp.Y<ap.Y or mp.Y>ap.Y+as.Y then menu.Visible = false end
+    end)
+end
+
+-- =====================
+--   MENU ITEMS
+-- =====================
+-- ESP TAB
+mkToggle(EspScroll,"All ESP",     function() return ESP.enabled   end, function(v) ESP.enabled   = v end)
+mkToggle(EspScroll,"Highlight", function() return ESP.highlight end, function(v) ESP.highlight = v end)
+mkToggle(EspScroll,"Box ESP",   function() return ESP.box       end, function(v) ESP.box       = v end)
+mkToggle(EspScroll,"Name",       function() return ESP.name      end, function(v) ESP.name      = v end)
+mkToggle(EspScroll,"Distance", function() return ESP.distance  end, function(v) ESP.distance  = v end)
+
+-- AIM TAB
+mkToggle(AimScroll,"AIM Enabled",  function() return AIM.enabled   end, function(v) AIM.enabled   = v end)
+mkToggle(AimScroll,"Show FOV",     function() return AIM.showFov   end, function(v) AIM.showFov   = v end)
+mkToggle(AimScroll,"Team Check",   function() return AIM.teamCheck end, function(v) AIM.teamCheck = v end)
+mkToggle(AimScroll,"Check Visible",function() return AIM.visCheck  end, function(v) AIM.visCheck  = v end)
+mkDropdown(AimScroll,"Target Part",
+    function() return AIM.target end, function(v) AIM.target = v end,
+    {"Head","HumanoidRootPart"})
+mkSlider(AimScroll,"FOV Radius",
+    function() return AIM.fovRadius   end, function(v) AIM.fovRadius   = v end, 30, 360, true)
+mkSlider(AimScroll,"Smoothness",
+    function() return AIM.smoothness  end, function(v) AIM.smoothness  = v end, 0.02, 0.5, false)
+mkSlider(AimScroll,"Release Zone",
+    function() return AIM.releaseZone end, function(v) AIM.releaseZone = v end, 1.0, 3.0, false)
+mkSlider(AimScroll,"Distance Priority",
+    function() return AIM.distanceWeight end, function(v) AIM.distanceWeight = v end, 0, 1, false)
+
+local hint = Instance.new("TextLabel", AimScroll)
+hint.Size = UDim2.new(1,-10,0,26); hint.BackgroundColor3 = Color3.fromRGB(30,30,60)
+hint.Text = "рџ–± RMB вЂ” hold for aim\nрџЋЇ Higher distance weight = closer target selection"
+hint.TextColor3 = Color3.fromRGB(100,200,255); hint.TextSize = 10
+hint.Font = Enum.Font.GothamBold; hint.TextXAlignment = Enum.TextXAlignment.Center
+Instance.new("UICorner",hint).CornerRadius = UDim.new(0,6)
+
+-- WORLD TAB
+mkToggle(WorldScroll,"FullBright", function() return WORLD.fullbright end, function(v) WORLD.fullbright = v; applyWorldSettings() end)
+mkToggle(WorldScroll,"Custom World (Purple)", function() return WORLD.customWorld end, function(v) WORLD.customWorld = v; applyWorldSettings() end)
+mkToggle(WorldScroll,"Rainbow Crosshair", function() return WORLD.crosshair end, function(v) WORLD.crosshair = v; setupCrosshair() end)
+
+local worldHint = Instance.new("TextLabel", WorldScroll)
+worldHint.Size = UDim2.new(1,-10,0,40); worldHint.BackgroundColor3 = Color3.fromRGB(30,30,60)
+worldHint.Text = "рџЋЁ Custom World: Purple color shift + fog\nрџ”« Crosshair: Rotating + Color cycling"
+worldHint.TextColor3 = Color3.fromRGB(100,200,255); worldHint.TextSize = 10
+worldHint.Font = Enum.Font.GothamBold; worldHint.TextXAlignment = Enum.TextXAlignment.Center
+worldHint.TextWrapped = true
+Instance.new("UICorner",worldHint).CornerRadius = UDim.new(0,6)
+
+-- =====================
+--   WORLD EFFECTS FUNCTIONS
+-- =====================
+local function applyWorldSettings()
+    if WORLD.fullbright then
+        Lighting.Brightness = 2
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    else
+        Lighting.Brightness = originalLighting.Brightness
+        Lighting.Ambient = originalLighting.Ambient
+        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+    end
+    
+    if WORLD.customWorld then
+        Lighting.ColorShift_Top = Color3.fromRGB(255, 0, 255)
+        Lighting.ColorShift_Bottom = Color3.fromRGB(128, 0, 128)
+        Lighting.FogColor = Color3.fromRGB(150, 0, 150)
+        Lighting.FogEnd = 500
+    else
+        Lighting.ColorShift_Top = originalLighting.ColorShift_Top
+        Lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom
+        Lighting.FogColor = originalLighting.FogColor
+        Lighting.FogEnd = originalLighting.FogEnd
+    end
+end
+
+-- =====================
+--   RAINBOW CROSSHAIR (Rotating Plus Shape)
+-- =====================
+local function setupCrosshair()
+    if crosshairObj then
+        crosshairObj:Destroy()
+        crosshairObj = nil
+    end
+    
+    if not WORLD.crosshair then return end
+    
+    crosshairObj = Instance.new("ScreenGui")
+    crosshairObj.Name = "RainbowCrosshair"
+    crosshairObj.IgnoreGuiInset = true
+    crosshairObj.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    crosshairObj.Parent = LP.PlayerGui
+    
+    -- Main frame for crosshair
+    local crossFrame = Instance.new("Frame", crosshairObj)
+    crossFrame.Size = UDim2.new(0, 30, 0, 30)
+    crossFrame.Position = UDim2.new(0.5, -15, 0.5, -15)
+    crossFrame.BackgroundTransparency = 1
+    crossFrame.ClipsDescendants = false
+    
+    -- Horizontal bar (plus shape)
+    local hBar = Instance.new("Frame", crossFrame)
+    hBar.Size = UDim2.new(1, 0, 0, 3)
+    hBar.Position = UDim2.new(0, 0, 0.5, -1.5)
+    hBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    hBar.BorderSizePixel = 0
+    Instance.new("UICorner", hBar).CornerRadius = UDim.new(1, 0)
+    
+    -- Vertical bar (plus shape)
+    local vBar = Instance.new("Frame", crossFrame)
+    vBar.Size = UDim2.new(0, 3, 1, 0)
+    vBar.Position = UDim2.new(0.5, -1.5, 0, 0)
+    vBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    vBar.BorderSizePixel = 0
+    Instance.new("UICorner", vBar).CornerRadius = UDim.new(1, 0)
+    
+    -- Rotation and color animation
+    local hue = 0
+    local rotationSpeed = 180 -- degrees per second
+    
+    RunService.RenderStepped:Connect(function(dt)
+        if not WORLD.crosshair or not crossframe then return end
+        
+        -- Rotate the crosshair
+        crossAngle = crossAngle + (rotationSpeed * dt)
+        crossFrame.Rotation = crossAngle % 360
+        
+        -- Cycle colors (rainbow effect)
+        hue = (hue + dt * 1.5) % 1
+        local color = Color3.fromHSV(hue, 1, 1)
+        hBar.BackgroundColor3 = color
+        vBar.BackgroundColor3 = color
+    end)
+    
+    crossframe = crossFrame
+    crossAngle = 0
+end
+
+-- =====================
+--   FOV CIRCLE
+-- =====================
+local FovDraw = Drawing.new("Circle")
+FovDraw.Visible = false; FovDraw.Thickness = 1.5; FovDraw.NumSides = 64
+FovDraw.Filled = false; FovDraw.Transparency = 1; FovDraw.Color = Color3.fromR# Aim-bot
